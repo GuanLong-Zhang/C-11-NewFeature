@@ -159,9 +159,118 @@ void test12() {
 	cout << "num = " << f10_1() << endl;
 
 }
-	
+
+//lambda表达式
+void assign(int x, int y) {
+	int a = 1;
+	int b = 2;
+	[=, &x]() mutable{        //除x是按照引用捕获的，其余的都是值捕获   要修改只读数据，需要加mutable
+		int c = a;
+		int d = x;
+		b++;
+		cout << "b = " << b << endl;   //虽然值发生了变化，但是值拷贝，形参改变不影响实参,外部b不会发生改变
+	}();        //调用需要加()
+	cout << "b = " << b << endl;
+}
+
+class C {
+public:
+	void output(int x, int y) {
+		auto x1 = [=]() {return number + x + y; }();     //按值捕获    只读
+		auto x2 = [&]() {return number + x + y; }();     //按引用捕获
+		auto x3 = [this]() {return number; }();          //捕获成员变量/函数
+		auto x4 = [this, x, y]() {return number + x + y; }();  //捕获成员变量/函数 以及 x y 
+		cout << "x1 = " << x1 << " x2 = " << x2 << " x3 = " << x3 << " x4 = " << x4 << endl;
+
+	}
+private:
+	int number = 100;
+};
+
+void toPtr(int x, int y) {
+	using ptr = void (*)(int);              //函数指针
+	ptr p1 = [](int z0) {                   //空捕获，可以转换为一个函数指针
+		cout << "z0 = " << z0 << endl;
+	};
+	p1(10);
+
+	function<void(int)> f11 = [=](int z1) {        //lambda表达式本质是一个仿函数,使用包装器进行接收
+		cout << "z1 = " << z1 << endl;
+	};
+	f11(20);
+
+	function<void(int)> f12 = bind([=](int z2) {       //先使用绑定器进行绑定,然后使用包装器进行接收
+		cout << "z2 = " << z2 << endl;
+		}, placeholders::_1);
+	f12(30);
+
+}
+
+void test13() {
+	assign(3, 4);
+	C c;
+	c.output(1, 2);
+	toPtr(100, 200);
+}
+
+//左值和左值引用 右值和右值引用
+class D {
+private:
+	int* myNum;
+public:
+	D() : myNum(new int(100)) {
+		cout << "无参构造函数被调用" << endl;
+	}
+
+	D(const D& d1) : myNum(new int(*d1.myNum)) {    //深拷贝
+		cout << "拷贝构造函数被调用" << endl;
+	}
+
+	//移动构造函数  进行浅拷贝   复用堆内存空间
+	D(D&& d1) : myNum(d1.myNum) {
+		d1.myNum = nullptr;
+		cout << "移动构造函数被调用" << endl;
+	}
+
+	~D() {
+		cout << "析构函数被调用" << endl;
+		delete myNum;
+	}
+
+};
+
+D getObj() {
+	D obj;
+	return obj;    
+}
+
+void test14() {
+	//左值num
+	int num = 9;
+	//左值引用    相当于给num起别名  左值引用a
+	int& a = num;
+	//右值 和 右值引用
+	int&& b = 10;      //右值10，右值引用b  需要加&&
+	//常量右值引用
+	const int&& d = 100;
+	//常量左值引用
+	const int& c = num;   //左值初始化
+	const int& c1 = a;    //左值引用初始化
+	const int& c2 = b;    //右值引用初始化
+	const int& c4 = d;    //常量右值引用初始化
+
+	D obj;
+	//D obj1 = obj;    //创建对象的时候。将obj赋给obj1    调用拷贝构造函数
+	D obj2 = move(obj);   //move强制将左值转换为右值，调用移动构造函数
+	//D obj3 = getObj();   //getObj()为临时变量，返回的值为右值，但是却没有调用到移动构造函数
+
+}
+
+
 int main() {
-	test12();
+	//test12();
+	//test13();
+	test14();
 
 
 	system("pause");
