@@ -1,5 +1,6 @@
 #include<iostream>
 #include<functional>
+#include<list>
 using namespace std;
 
 //可调用对象包装器 绑定器
@@ -244,6 +245,14 @@ D getObj() {
 	return obj;    
 }
 
+D getObj1() {
+	return D();
+}
+
+D&& getObj2() {
+	return D();
+}
+
 void test14() {
 	//左值num
 	int num = 9;
@@ -260,19 +269,106 @@ void test14() {
 	const int& c4 = d;    //常量右值引用初始化
 
 	D obj;
-	//D obj1 = obj;    //创建对象的时候。将obj赋给obj1    调用拷贝构造函数
+	D obj1 = obj;    //创建对象的时候。将obj赋给obj1    调用拷贝构造函数
 	D obj2 = move(obj);   //move强制将左值转换为右值，调用移动构造函数
+	
 	//D obj3 = getObj();   //getObj()为临时变量，返回的值为右值，但是却没有调用到移动构造函数
+	//D &&obj4 = getObj1();
+	//D&& obj5 = getObj2();
+}
+
+//未定义的引用类型的推导   
+//并不是&&,a就是右值引用，需要根据传入的实参进行推导
+//传入右值，则推导出的是右值引用；传入非右值，那么推导出为左值引用
+template<typename T>
+void funcT(T&& a) {
+	cout << "模板函数被调用" << endl;
+}
+
+void test15() {
+	funcT(10);     //传入右值，a为右值引用
+	int xT = 10;   //xT为左值
+	funcT(xT);     //传入左值，a为左值引用   传入实参是非右值，a均是左值引用
+
+	//非右值包括：左值，左值引用，右值引用，常量左值引用，常量右值引用  
+
+	auto&& aT = xT;    //传入左值，aT为左值引用
+	auto&& aT1 = 250;  //传入右值，aT1为右值引用
+	int&& v1 = 100;    //v1为右值引用
+	auto&& v2 = v1;    //v2为左值引用，因为传入的参数是右值引用
+	int& v3 = xT;      //v3为左值引用
+	auto&& v4 = v3;    //v4为左值引用，因为传入的参数是左值引用
+	const int& v5 = xT;    //v5为常量左值引用
+	auto&& v6 = v5;        //v6为常量左值引用，因为传入的参数是常量左值引用 
+	const int&& v7 = 300;  //v7为常量右值引用
+	auto&& v8 = v7;        //v8为常量左值引用，因为传入的参数是常量右值引用   
 
 }
 
-
-int main() {
-	//test12();
-	//test13();
-	test14();
-
-
-	system("pause");
-	return 0;
+//右值引用的传递
+//右值引用在传递的时候，会把其转换为左值引用
+void printValue(int&& a) {
+	cout << "右值引用函数被调用a = " << a << endl;
 }
+
+void printValue(int& a) {
+	cout << "左值引用函数被调用a = " <<a << endl;
+}
+
+void forward(int&& a) {   //int&& a表明a是一个右值，但是在传递的时候会将其转换为左值
+	printValue(a);
+}
+
+void test16() {
+	int va = 100;
+	printValue(va);
+	printValue(200);
+	forward(300);
+}
+
+template<typename T>
+void printKey(T& t) {
+	cout << "左值引用函数被调用t = " << t << endl;
+}
+
+template<typename T>
+void printKey(T&& t) {
+	cout << "右值引用函数被调用t = " << t << endl;
+}
+
+template<typename T>
+void testForward(T&& t) {     //自动类型推导，非右值，均为左值引用
+	printKey(t);              //右值引用在传递的时候，会变成左值引用
+	printKey(move(t));        //左值转右值
+	printKey(forward<T>(t));   //当T为左值引用，t就为左值；当T为非左值引用，那么t就为右值
+	cout << endl;
+
+}
+
+//转移和完美转发  move forward
+void test17() {
+	int Aa = 10;             //Aa为一个左值
+	int&& Bb = move(Aa);     //直接使用左值给右值引用初始化会报错，所以使用move将左值转换为右值，进行右值引用的初始化
+
+	list<string> l1 = { "hello","world","C++","Java" };
+	list<string>l2 = move(l1);   //使用move进行资源转移，提高效率。  l1之后不会被使用，并且需要拷贝到l2,那么就可以使用move进行资源转移，提高效率
+
+	testForward(520);    //左 右 右
+	testForward(Aa);     //左 右 左
+	testForward(forward<int>(Aa));   //左 右 右
+	testForward(forward<int&>(Aa));  //左 右 左
+	testForward(forward<int&&>(Aa)); //左 右 右
+}
+
+
+//int main() {
+//	//test12();
+//	//test13();
+//	//test14();
+//	//test15();
+//	//test16();
+//	test17();
+//
+//	system("pause");
+//	return 0;
+//}
